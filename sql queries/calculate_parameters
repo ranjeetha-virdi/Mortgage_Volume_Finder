@@ -1,1 +1,115 @@
 
+QUERY 1:
+/* To calculate closed mortgages and the financing volume the branch achieved per month
+   variables: 
+   - closed_mortgages: the total closed mortgages per month
+   - financing_volume: the total financing volume per month
+   tables:
+   - deals : All the deals deatils for the branch for the year 2020 and 2021
+   * targets: These are the targets expected to be met each month by the branch
+(data of FinTech Bros, deals for the year 2021) */
+
+
+SELECT 
+		SUM(closed_volume)           AS financing_volume
+       ,COUNT(closed_at)             AS closed_mortgages
+	   ,closed_at_month
+	   ,closed_at_year
+FROM 
+       deals
+GROUP BY 
+        closed_at_month
+       ,closed_at_year
+ORDER BY 
+        closed_at_year
+        ,closed_at_month ASC
+
+
+QUERY 2:
+/* Here we calculate the deviation from targets in percentage for each month of the year 2021.
+   - Variables: 
+     * financing volume:  It is the financing volume the branch achieved per month for the year 2021.
+	 
+   - tables:
+     * actual_volume1: It is a table created from calculating the financing volume the branch achieved 
+	 per month (derived from the answer for 1.sql query for the duration for the year 2021 only)
+	 * targets: These are the targets expected to be met each month by the branch
+     (data of FinTech Bros, targets for the year 2021)*/
+
+--CREATE TABLE 
+--deviation
+--AS
+SELECT *,
+   ROUND((financing_volume-target)*100/target,2)           AS deviation_percentage
+FROM
+
+
+(SELECT 
+         a.closed_at_month
+        ,a.financing_volume
+        ,t.target
+FROM
+        actual_volume1 a
+LEFT JOIN
+        targets t
+ON
+        a.closed_at_month = t.month)f
+
+
+
+
+QUERY 3:
+/* We will use windowing function to measure branch performance by calculating rolling mean over 3 Months
+   - Variables: 
+     * avg_deviation:  rolling avg calculated for 3 months
+   - tables:
+     * deviation table consists of monthly deviation in percent from targets
+	  (obtained as answer for 2.sql query)*/
+
+--CREATE TABLE
+--    rolling_avg
+--AS
+SELECT d.closed_at_month
+      ,ROUND(AVG(d.deviation_percentage::numeric)
+	   OVER(ORDER BY d.closed_at_month ROWS BETWEEN 2 PRECEDING AND CURRENT ROW),2)       AS avg_deviation
+FROM 
+	   deviation d;
+
+QUERY 4:
+/* We will use windowing function to create unique row rn and do a left outer join
+   - Variables: 
+     * combined_monthly_share_bau:  the combined monthly volume of FinTech Bros
+     * combined_monthly_share_bb: the combined monthly volume of Bundesbank
+     * percentage_share: market share of FinTech Bros in Germany 
+   - tables:
+     * actual: it has the monthly volume and closed mortgages achieved per month
+	 (obtained as answer for 1.sql query)
+	 * bundesbank_data: it has the bundesbank data obtained from the python script for 
+	 the duration between 2020 and 2021 */
+
+
+SELECT 
+        t1.closed_at_year                                                 AS year_db
+       ,t1.closed_at_month                                                AS month_db
+       ,t1.financing_volume                                               AS combined_monthly_share_bau
+       ,t2.volume                                                         AS combined_monthly_share_bb
+	   ,round(t1.financing_volume  * 100.0 / t2.volume,3)                 AS percentage_share
+FROM
+(
+  SELECT 
+	*,
+  ROW_NUMBER() OVER (ORDER BY closed_at_year)                             AS rn
+  FROM actual)                                                            AS t1
+
+LEFT OUTER JOIN
+   (
+   SELECT *,
+   ROW_NUMBER() OVER (ORDER BY closed_year)                               AS rn
+   FROM bundesbank_data)                                                  AS t2
+   
+ON
+   t1.rn = t2.rn
+   
+
+
+
