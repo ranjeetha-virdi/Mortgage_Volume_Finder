@@ -24,6 +24,7 @@ ORDER BY
         closed_at_year
         ,closed_at_month ASC
 
+-------------------------------------------------------------------------------------------------------------------------------
 
 QUERY 2:
 /* Here we calculate the deviation from targets in percentage for each month of the year 2021.
@@ -57,6 +58,7 @@ ON
 
 
 
+----------------------------------------------------------------------------------------------------------------------------------
 
 QUERY 3:
 /* We will use windowing function to measure branch performance by calculating rolling mean over 3 Months
@@ -74,6 +76,10 @@ SELECT d.closed_at_month
 	   OVER(ORDER BY d.closed_at_month ROWS BETWEEN 2 PRECEDING AND CURRENT ROW),2)       AS avg_deviation
 FROM 
 	   deviation d;
+
+
+
+---------------------------------------------------------------------------------------------------------------------------------
 
 QUERY 4:
 /* We will use windowing function to create unique row rn and do a left outer join
